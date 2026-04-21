@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMS 短信生成器</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:14px;color:#1a1a1a;background:#f5f5f3;padding:24px}
+.card{background:#fff;border-radius:12px;border:0.5px solid #e0ddd6;padding:20px 24px;max-width:1180px;margin:0 auto}
+h2{font-size:16px;font-weight:500;margin-bottom:16px;color:#1a1a1a}
+.config-panel{border:0.5px solid #e0ddd6;border-radius:12px;background:#fafaf8;padding:14px 16px;margin-bottom:14px}
+.config-grid{display:grid;grid-template-columns:2fr 1.3fr 0.8fr 1.4fr;gap:12px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12px;font-weight:500;color:#666}
+.field-hint{font-size:12px;color:#888;line-height:1.6;margin-top:10px}
+.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.toolbar-count{width:110px}
+button{font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid #c8c5be;border-radius:8px;background:transparent;color:#1a1a1a;cursor:pointer;transition:background 0.15s}
+button:hover{background:#f1efe8}
+button:active{transform:scale(0.98)}
+.btn-add{color:#0c447c;border-color:#378add}
+.btn-add:hover{background:#e6f1fb}
+.btn-export{background:#0c447c;color:#e6f1fb;border-color:#0c447c;font-weight:500}
+.btn-export:hover{background:#185fa5}
+.count{font-size:13px;color:#888;margin-left:auto}
+.table-wrap{overflow-x:auto;border:0.5px solid #e0ddd6;border-radius:12px}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+thead tr{background:#f5f5f3}
+th{padding:9px 8px;text-align:left;font-size:12px;font-weight:500;color:#888;border-bottom:0.5px solid #e0ddd6;white-space:nowrap}
+td{padding:5px;border-bottom:0.5px solid #e0ddd6;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafaf8}
+input{width:100%;font-family:inherit;font-size:13px;padding:8px 10px;border:0.5px solid #e0ddd6;border-radius:8px;background:#fff;color:#1a1a1a;outline:none}
+input:focus{border-color:#378add;box-shadow:0 0 0 2px rgba(55,138,221,0.15)}
+input::placeholder{color:#bbb}
+.cell-fixed{display:flex;align-items:center;justify-content:center;min-height:38px;padding:8px 10px;border:0.5px solid #e0ddd6;border-radius:8px;background:#f7f7f4;color:#0c447c;font-size:13px;font-weight:500}
+.del-btn{width:32px;height:32px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:8px;border-color:#e0ddd6;color:#888;font-size:16px}
+.del-btn:hover{background:#fcebeb;border-color:#e24b4a;color:#a32d2d}
+.tip{font-size:12px;color:#666;margin-top:14px;line-height:1.7;padding:10px 12px;border-left:2px solid #378add;background:#f5f5f3;border-radius:0 8px 8px 0}
+.tip b{font-weight:500;color:#1a1a1a}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0c447c;color:#e6f1fb;padding:8px 18px;border-radius:8px;font-size:13px;opacity:0;transition:opacity 0.2s;pointer-events:none;z-index:999}
+th:nth-child(1){width:170px}
+th:nth-child(2){width:320px}
+th:nth-child(3){width:170px}
+th:nth-child(4){width:88px}
+th:nth-child(5){width:190px}
+th:nth-child(6){width:44px}
+@media (max-width:900px){
+  body{padding:16px}
+  .card{padding:16px}
+  .config-grid{grid-template-columns:1fr}
+  .count{margin-left:0}
+}
+</style>
+</head>
+<body>
+<div class="card">
+<h2>SMS 短信生成器</h2>
+
+<div class="config-panel">
+  <div class="field" style="margin-bottom:12px;">
+    <label for="configBody">短信固定内容</label>
+    <input id="configBody" type="text" placeholder="在这里输入统一短信内容，下面各行会同步更新" />
+  </div>
+  <div class="config-grid">
+    <div class="field">
+      <label for="configName">联系人姓名</label>
+      <input id="configName" type="text" value="发财" placeholder="例如：发财" />
+    </div>
+    <div class="field">
+      <label for="configSequence">序号起始值</label>
+      <input id="configSequence" type="number" min="0" step="1" value="1" />
+    </div>
+    <div class="field">
+      <label for="configTime">基准时间</label>
+      <input id="configTime" type="datetime-local" />
+    </div>
+    <div class="field">
+      <label>统一规则说明</label>
+      <div class="cell-fixed">修改上面设置时，将批量刷新下方对应列</div>
+    </div>
+  </div>
+  <div class="field-hint">
+    顶部统一设置会批量更新下面各行的 <b>短信内容</b>、<b>联系人姓名</b> 和 <b>时间</b>；每一行仍然可以在表格里单独修改。
+    新添加的行会自动生成一个已知归属地的中国手机号，系统会优先分散城市，再在该城市内轮换真实号段，<b>type</b> 固定为发送。
+  </div>
+</div>
+
+<div class="toolbar">
+  <input id="addCount" class="toolbar-count" type="number" min="1" step="1" value="1" placeholder="输入行数" />
+  <button class="btn-add" onclick="addRowsFromInput()">+ 添加 n 行</button>
+  <button class="btn-export" onclick="exportSms()">导出 .sms 文件</button>
+  <button onclick="exportContacts()">导出联系人 .vcf</button>
+  <span class="count" id="count">0 条</span>
+</div>
+
+<div class="table-wrap">
+<table id="smsTable">
+<thead>
+<tr>
+  <th>adress<br><span style="font-weight:400;color:#aaa;font-size:11px">自动生成多城市已知号段手机号，可手动修改 *</span></th>
+  <th>body<br><span style="font-weight:400;color:#aaa;font-size:11px">默认跟随顶部“短信固定内容” *</span></th>
+  <th>name<br><span style="font-weight:400;color:#aaa;font-size:11px">默认按姓名 + 序号递增 *</span></th>
+  <th>type<br><span style="font-weight:400;color:#aaa;font-size:11px">固定发送</span></th>
+  <th>time<br><span style="font-weight:400;color:#aaa;font-size:11px">基于顶部时间正向随机 +1~5 分钟，每分钟随机 1~5 条 *</span></th>
+  <th></th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
+</div>
+
+<div class="tip">
+  <b>导出说明：</b>页面已去掉 <b>read</b> 和 <b>serviceCenter</b> 两列；导出时会固定写入 <b>type=2</b>、<b>read=1</b>。
+  自动生成时间时，同一分钟会随机生成 <b>1~5</b> 条短信，下一组会在上一分钟基础上随机后移 <b>1~5</b> 分钟；导出时会自动转换为毫秒时间戳。
+  如果手机短信页面顶部仍显示手机号，请先把 <b>联系人 .vcf</b> 导入通讯录，短信 App 通常是从系统通讯录匹配联系人姓名。
+</div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const KNOWN_PHONE_SEGMENTS = [
+  { segment: "1300000", area: "山东济南", carrier: "中国联通" },
+  { segment: "1310000", area: "山西太原", carrier: "中国联通" },
+  { segment: "1330000", area: "广西南宁", carrier: "中国电信" },
+  { segment: "1350000", area: "广东广州", carrier: "中国移动" },
+  { segment: "1370000", area: "辽宁沈阳", carrier: "中国移动" },
+  { segment: "1380009", area: "广东广州", carrier: "中国移动" },
+  { segment: "1390000", area: "新疆乌鲁木齐", carrier: "中国移动" },
+  { segment: "1500000", area: "上海", carrier: "中国移动" },
+  { segment: "1510000", area: "河北邯郸", carrier: "中国移动" },
+  { segment: "1520000", area: "河北石家庄", carrier: "中国移动" },
+  { segment: "1530140", area: "江苏淮安", carrier: "中国电信" },
+  { segment: "1550000", area: "吉林长春", carrier: "中国联通" },
+  { segment: "1560140", area: "江苏淮安", carrier: "中国联通" },
+  { segment: "1570000", area: "浙江衢州", carrier: "中国移动" },
+  { segment: "1580000", area: "广东广州", carrier: "中国移动" },
+  { segment: "1590000", area: "广东中山", carrier: "中国移动" },
+  { segment: "1660200", area: "广东广州", carrier: "中国联通" },
+  { segment: "1700018", area: "广东深圳", carrier: "中国电信/虚拟运营商" },
+  { segment: "1710020", area: "安徽马鞍山", carrier: "中国联通/虚拟运营商" },
+  { segment: "1750140", area: "江苏南通", carrier: "中国联通" },
+  { segment: "1760140", area: "江苏苏州", carrier: "中国联通" },
+  { segment: "1780030", area: "河北邯郸", carrier: "中国移动" },
+  { segment: "1800000", area: "广东东莞", carrier: "中国电信" },
+  { segment: "1810012", area: "浙江宁波", carrier: "中国电信" },
+  { segment: "1820000", area: "四川成都", carrier: "中国移动" },
+  { segment: "1830000", area: "广东深圳", carrier: "中国移动" },
+  { segment: "1840000", area: "重庆", carrier: "中国移动" },
+  { segment: "1850140", area: "江苏南京", carrier: "中国联通" },
+  { segment: "1860140", area: "江苏南京", carrier: "中国联通" },
+  { segment: "1870000", area: "陕西西安", carrier: "中国移动" },
+  { segment: "1880040", area: "黑龙江哈尔滨", carrier: "中国移动" },
+  { segment: "1890003", area: "安徽合肥", carrier: "中国电信" },
+  { segment: "1980140", area: "河北保定", carrier: "中国移动" }
+];
+
+const PHONE_SEGMENTS_BY_AREA = groupPhoneSegmentsByArea(KNOWN_PHONE_SEGMENTS);
+const PHONE_AREAS = Object.keys(PHONE_SEGMENTS_BY_AREA);
+
+const state = {
+  fixedBody: "",
+  contactBaseName: "发财",
+  sequenceStart: 1,
+  baseTime: ""
+};
+
+let rows = [];
+let idCtr = 0;
+let areaBag = [];
+const segmentBagsByArea = {};
+let timeSequenceState = createEmptyTimeSequenceState();
+
+function initialize() {
+  state.baseTime = getRoundedNowValue();
+  document.getElementById("configTime").value = state.baseTime;
+  resetTimeSequenceState(state.baseTime);
+  bindConfigEvents();
+  bindToolbarEvents();
+  addRows(1);
+}
+
+function bindConfigEvents() {
+  document.getElementById("configBody").addEventListener("input", (event) => {
+    state.fixedBody = event.target.value;
+    applyFixedBodyToRows();
+  });
+
+  document.getElementById("configName").addEventListener("input", (event) => {
+    state.contactBaseName = event.target.value;
+    applyNamePatternToRows();
+  });
+
+  document.getElementById("configSequence").addEventListener("input", (event) => {
+    state.sequenceStart = parseSequenceValue(event.target.value);
+    applyNamePatternToRows();
+  });
+
+  document.getElementById("configTime").addEventListener("change", (event) => {
+    state.baseTime = event.target.value;
+    applyTimePatternToRows();
+  });
+}
+
+function bindToolbarEvents() {
+  document.getElementById("addCount").addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      addRowsFromInput();
+    }
+  });
+}
+
+function addRow(data, shouldRender = true, preferredArea = "") {
+  const id = ++idCtr;
+  const defaults = {
+    adress: generatePhoneNumber(preferredArea),
+    body: state.fixedBody,
+    name: buildSequentialName(rows.length),
+    type: "2",
+    time: generateNextTimeValue()
+  };
+  rows.push({ id, ...defaults, ...data, type: "2" });
+  if (shouldRender) {
+    render();
+  }
+}
+
+function addRows(count) {
+  const areaPlan = buildAreaPlan(count);
+  syncTimeSequenceStateFromRows();
+  for (let index = 0; index < count; index += 1) {
+    addRow(undefined, false, areaPlan[index]);
+  }
+  render();
+}
+
+function addRowsFromInput() {
+  const input = document.getElementById("addCount");
+  const count = Number.parseInt(input.value, 10);
+  if (!Number.isFinite(count) || count <= 0) {
+    showToast("请输入大于 0 的整数行数");
+    input.focus();
+    return;
+  }
+  addRows(count);
+}
+
+function delRow(id) {
+  rows = rows.filter((row) => row.id !== id);
+  syncTimeSequenceStateFromRows();
+  render();
+}
+
+function updateRow(id, field, value) {
+  const row = rows.find((item) => item.id === id);
+  if (!row) {
+    return;
+  }
+  row[field] = value;
+  if (field === "time") {
+    syncTimeSequenceStateFromRows();
+  }
+  updateCount();
+}
+
+function render() {
+  const tbody = document.getElementById("tbody");
+  tbody.innerHTML = rows.map((row) => `
+  <tr>
+    <td><input value="${escAttr(row.adress)}" placeholder="自动生成手机号" oninput="updateRow(${row.id}, 'adress', this.value)" /></td>
+    <td><input value="${escAttr(row.body)}" placeholder="请输入短信内容" oninput="updateRow(${row.id}, 'body', this.value)" /></td>
+    <td><input value="${escAttr(row.name)}" placeholder="请输入联系人姓名" oninput="updateRow(${row.id}, 'name', this.value)" /></td>
+    <td><div class="cell-fixed">2 发送</div></td>
+    <td><input type="datetime-local" value="${escAttr(row.time)}" oninput="updateRow(${row.id}, 'time', this.value)" /></td>
+    <td><button class="del-btn" onclick="delRow(${row.id})" title="删除">×</button></td>
+  </tr>`).join("");
+  updateCount();
+}
+
+function applyFixedBodyToRows() {
+  rows.forEach((row) => {
+    row.body = state.fixedBody;
+  });
+  render();
+}
+
+function applyNamePatternToRows() {
+  rows.forEach((row, index) => {
+    row.name = buildSequentialName(index);
+  });
+  render();
+}
+
+function applyTimePatternToRows() {
+  const nextTimes = buildTimeSequence(rows.length);
+  rows.forEach((row, index) => {
+    row.time = nextTimes[index];
+  });
+  render();
+}
+
+function buildSequentialName(index) {
+  if (!state.contactBaseName.trim()) {
+    return "";
+  }
+  return `${state.contactBaseName}${state.sequenceStart + index}`;
+}
+
+function buildTimeSequence(count) {
+  resetTimeSequenceState(state.baseTime);
+  const values = [];
+  for (let index = 0; index < count; index += 1) {
+    values.push(getNextSequenceTime());
+  }
+  return values;
+}
+
+function generateNextTimeValue() {
+  return getNextSequenceTime();
+}
+
+function generatePhoneNumber(preferredArea = "") {
+  const existing = new Set(rows.map((row) => row.adress.trim()));
+
+  for (const area of buildAreaFallbackOrder(preferredArea)) {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const picked = getNextPhoneSegment(area);
+      const suffix = String(Math.floor(Math.random() * 10000)).padStart(4, "0");
+      const phone = `${picked.segment}${suffix}`;
+      if (!existing.has(phone)) {
+        return phone;
+      }
+    }
+  }
+
+  const fallback = getNextPhoneSegment(preferredArea || PHONE_AREAS[0]);
+  return `${fallback.segment}${String(Math.floor(Math.random() * 10000)).padStart(4, "0")}`;
+}
+
+function buildAreaPlan(count) {
+  const plan = [];
+  for (let index = 0; index < count; index += 1) {
+    plan.push(getNextPhoneArea());
+  }
+  return plan;
+}
+
+function buildAreaFallbackOrder(preferredArea = "") {
+  const otherAreas = shuffleInPlace(PHONE_AREAS.filter((area) => area !== preferredArea));
+  return preferredArea ? [preferredArea, ...otherAreas] : otherAreas;
+}
+
+function getNextPhoneArea() {
+  // Refill from a shuffled bag of unique cities, so each batch spreads across cities before repeating.
+  if (areaBag.length === 0) {
+    areaBag = shuffleInPlace([...PHONE_AREAS]);
+  }
+  return areaBag.pop();
+}
+
+function getNextPhoneSegment(area) {
+  if (!segmentBagsByArea[area] || segmentBagsByArea[area].length === 0) {
+    segmentBagsByArea[area] = shuffleInPlace([...PHONE_SEGMENTS_BY_AREA[area]]);
+  }
+  return segmentBagsByArea[area].pop();
+}
+
+function shuffleInPlace(list) {
+  for (let index = list.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [list[index], list[swapIndex]] = [list[swapIndex], list[index]];
+  }
+  return list;
+}
+
+function groupPhoneSegmentsByArea(segments) {
+  const grouped = {};
+  segments.forEach((segment) => {
+    if (!grouped[segment.area]) {
+      grouped[segment.area] = [];
+    }
+    grouped[segment.area].push(segment);
+  });
+  return grouped;
+}
+
+function createEmptyTimeSequenceState() {
+  return {
+    currentTime: "",
+    currentMinuteCount: 0,
+    targetCountForMinute: 0
+  };
+}
+
+function resetTimeSequenceState(baseTimeValue) {
+  timeSequenceState = {
+    currentTime: normalizeDateTimeLocalValue(baseTimeValue),
+    currentMinuteCount: 0,
+    targetCountForMinute: 0
+  };
+}
+
+function getNextSequenceTime() {
+  if (!timeSequenceState.currentTime) {
+    resetTimeSequenceState(state.baseTime);
+  }
+
+  if (!timeSequenceState.currentTime) {
+    return "";
+  }
+
+  if (timeSequenceState.currentMinuteCount === 0) {
+    timeSequenceState.currentMinuteCount = 1;
+    timeSequenceState.targetCountForMinute = getRandomMessageCountForMinute();
+    return timeSequenceState.currentTime;
+  }
+
+  if (timeSequenceState.currentMinuteCount < timeSequenceState.targetCountForMinute) {
+    timeSequenceState.currentMinuteCount += 1;
+    return timeSequenceState.currentTime;
+  }
+
+  const currentDate = parseDateTimeLocalValue(timeSequenceState.currentTime);
+  if (!currentDate) {
+    resetTimeSequenceState(state.baseTime);
+    return getNextSequenceTime();
+  }
+
+  timeSequenceState.currentTime = formatDateTimeLocal(
+    new Date(currentDate.getTime() + getRandomStepMinutes() * 60 * 1000)
+  );
+  timeSequenceState.currentMinuteCount = 1;
+  timeSequenceState.targetCountForMinute = getRandomMessageCountForMinute();
+  return timeSequenceState.currentTime;
+}
+
+function syncTimeSequenceStateFromRows() {
+  if (rows.length === 0) {
+    resetTimeSequenceState(state.baseTime);
+    return;
+  }
+
+  const normalizedTimes = rows.map((row) => normalizeDateTimeLocalValue(row.time));
+  const lastTime = normalizedTimes[normalizedTimes.length - 1];
+  if (!lastTime) {
+    resetTimeSequenceState(state.baseTime);
+    return;
+  }
+
+  let trailingCount = 1;
+  for (let index = normalizedTimes.length - 2; index >= 0; index -= 1) {
+    if (normalizedTimes[index] !== lastTime) {
+      break;
+    }
+    trailingCount += 1;
+  }
+
+  const currentMinuteCount = Math.min(trailingCount, 5);
+  timeSequenceState = {
+    currentTime: lastTime,
+    currentMinuteCount,
+    targetCountForMinute: currentMinuteCount >= 5 ? 5 : randomIntBetween(currentMinuteCount, 5)
+  };
+}
+
+function normalizeDateTimeLocalValue(value) {
+  const date = parseDateTimeLocalValue(value);
+  return date ? formatDateTimeLocal(date) : "";
+}
+
+function getRandomStepMinutes() {
+  return randomIntBetween(1, 5);
+}
+
+function getRandomMessageCountForMinute() {
+  return randomIntBetween(1, 5);
+}
+
+function randomIntBetween(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function parseSequenceValue(value) {
+  const parsed = Number.parseInt(String(value).trim() || "1", 10);
+  return Number.isFinite(parsed) ? parsed : 1;
+}
+
+function getRoundedNowValue() {
+  const now = new Date();
+  now.setSeconds(0, 0);
+  return formatDateTimeLocal(now);
+}
+
+function formatDateTimeLocal(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hour}:${minute}`;
+}
+
+function parseDateTimeLocalValue(value) {
+  if (!value) {
+    return null;
+  }
+
+  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  if (!match) {
+    return null;
+  }
+
+  const date = new Date(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3]),
+    Number(match[4]),
+    Number(match[5]),
+    0,
+    0
+  );
+
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function parseTimeToMs(value) {
+  const localDate = parseDateTimeLocalValue(value);
+  if (localDate) {
+    return localDate.getTime();
+  }
+
+  const input = String(value || "").trim();
+  if (!input) {
+    return Date.now();
+  }
+
+  const digits = input.replace(/\D/g, "");
+  let year;
+  let month;
+  let day;
+  let hour = 12;
+  let minute = 0;
+  let second = 0;
+
+  if (digits.length >= 14) {
+    year = Number(digits.slice(0, 4));
+    month = Number(digits.slice(4, 6)) - 1;
+    day = Number(digits.slice(6, 8));
+    hour = Number(digits.slice(8, 10));
+    minute = Number(digits.slice(10, 12));
+    second = Number(digits.slice(12, 14));
+  } else if (digits.length >= 8) {
+    year = Number(digits.slice(0, 4));
+    month = Number(digits.slice(4, 6)) - 1;
+    day = Number(digits.slice(6, 8));
+  } else {
+    return Date.now();
+  }
+
+  return new Date(year, month, day, hour, minute, second).getTime();
+}
+
+function exportSms() {
+  if (rows.length === 0) {
+    showToast("请先添加短信数据");
+    return;
+  }
+
+  const errors = [];
+  rows.forEach((row, index) => {
+    if (!/^1\d{10}$/.test(row.adress.trim())) errors.push(`第 ${index + 1} 行：adress 需要是 11 位手机号`);
+    if (!row.body.trim()) errors.push(`第 ${index + 1} 行：body 不能为空`);
+    if (!row.name.trim()) errors.push(`第 ${index + 1} 行：name 不能为空`);
+    if (!row.time.trim()) errors.push(`第 ${index + 1} 行：time 不能为空`);
+  });
+
+  if (errors.length > 0) {
+    showToast(errors[0]);
+    return;
+  }
+
+  const listSms = rows.map((row) => ({
+    adress: row.adress.trim(),
+    body: row.body,
+    name: row.name.trim(),
+    read: 1,
+    time: parseTimeToMs(row.time),
+    type: 2
+  }));
+
+  const json = JSON.stringify({ listSms, size: 0 });
+  const blob = new Blob([json], { type: "application/octet-stream" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+
+  link.href = url;
+  link.download = `sms_export_${stamp}.sms`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  showToast(`已导出 ${rows.length} 条短信`);
+}
+
+function exportContacts() {
+  if (rows.length === 0) {
+    showToast("请先添加短信数据");
+    return;
+  }
+
+  const errors = [];
+  const contactsByPhone = new Map();
+  rows.forEach((row, index) => {
+    const phone = row.adress.trim();
+    const name = row.name.trim();
+    if (!/^1\d{10}$/.test(phone)) errors.push(`第 ${index + 1} 行：adress 需要是 11 位手机号`);
+    if (!name) errors.push(`第 ${index + 1} 行：name 不能为空`);
+    if (phone && name && !contactsByPhone.has(phone)) {
+      contactsByPhone.set(phone, name);
+    }
+  });
+
+  if (errors.length > 0) {
+    showToast(errors[0]);
+    return;
+  }
+
+  const vcard = Array.from(contactsByPhone, ([phone, name]) => [
+    "BEGIN:VCARD",
+    "VERSION:3.0",
+    `FN:${escapeVcardText(name)}`,
+    `N:${escapeVcardText(name)};;;;`,
+    `TEL;TYPE=CELL:${phone}`,
+    "END:VCARD"
+  ].join("\r\n")).join("\r\n");
+
+  const blob = new Blob([`${vcard}\r\n`], { type: "text/vcard;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+
+  link.href = url;
+  link.download = `contacts_${stamp}.vcf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  showToast(`已导出 ${contactsByPhone.size} 个联系人`);
+}
+
+function escapeVcardText(value) {
+  return String(value)
+    .replace(/\\/g, "\\\\")
+    .replace(/\n/g, "\\n")
+    .replace(/,/g, "\\,")
+    .replace(/;/g, "\\;");
+}
+
+function escAttr(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;");
+}
+
+function updateCount() {
+  document.getElementById("count").textContent = `${rows.length} 条`;
+}
+
+function showToast(message) {
+  const toast = document.getElementById("toast");
+  toast.textContent = message;
+  toast.style.opacity = "1";
+  setTimeout(() => {
+    toast.style.opacity = "0";
+  }, 2200);
+}
+
+initialize();
+</script>
+</body>
+</html>
